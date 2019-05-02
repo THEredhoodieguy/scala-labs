@@ -42,33 +42,45 @@ import scala.language.implicitConversions
  */
 abstract class Currency(val symbol: String)
 
-class Euro(val euro:Int, val cents:Int=0) extends Currency("EUR") {
+class Euro(val euro:Int, val cents:Int=0) extends Currency("EUR") with Ordered[Euro] {
 
-  def inCents():Int = this.euro*100 + this.cents
+  def inCents():Int = euro*100 + cents
 
   //adds two euros together, returns a new euro with the correct amount
   def +(amountToAdd:Euro):Euro = {
-    val newEuro = this.euro + amountToAdd.euro + (this.cents + amountToAdd.cents) / 100
-    val newCents = (this.cents + amountToAdd.cents) % 100
+    val newEuro = euro + amountToAdd.euro + (cents + amountToAdd.cents) / 100
+    val newCents = (cents + amountToAdd.cents) % 100
 
     new Euro(newEuro, newCents)
   }
 
   //multiplies
   def *(multiplier:Int):Euro = {
+    Euro.fromCents(multiplier * inCents())
+  }
 
-    val newEuros = this.euro * multiplier + (this.cents * multiplier) / 100
-    val newCents = (this.cents * multiplier) % 100
+  override def toString():String = {
+    if(this.cents == 0)
+      "%s: %d,--".format(symbol, euro)
+    else
+      "%s: %d,%02d".format(symbol, euro, cents)
+  }
 
-    new Euro(newEuros, newCents)
+  override def compare(that: Euro): Int = {
+    inCents() - that.inCents()
   }
 }
 
 object Euro {
-  def fromCents(cents:Int):Euro = {
-    val newEuro = cents / 100
-    val newCents = cents % 100
+  def fromCents(cents:Int):Euro = new Euro(cents/100, cents%100)
 
-    new Euro(newEuro, newCents)
+  implicit class EuroInt(val i:Int) extends AnyVal {
+    def *(euro:Euro) = euro * i
   }
+
+  implicit def fromDollar(dollar:Dollar)(implicit converter:CurrencyConverter): Euro = Euro.fromCents(converter.toEuroCents(dollar.inCents))
+}
+
+class Dollar(val dollar:Int, val cents:Int) extends Currency("USD") {
+  def inCents:Int = dollar * 100 + cents
 }
